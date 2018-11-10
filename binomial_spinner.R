@@ -1,16 +1,12 @@
 # Binomial Spinner
-# Breanna Gronner 
-# Date: 1/30/2014
-# Built under Shiny 0.4.0 (2/22/2013 release)
+# Breanna Hartfiel (Gronner) 
+# Original Date: 1/30/2014 Built under shiny 0.4.0 (2/22/2013 release)
+# Date: 11/10/2018 - updating app for shiny 1.2.0 
 
-
-
-
-# ui.R for Spinner
 library(shiny)
 
 # Define UI for application that plots random distributions
-shinyUI(pageWithSidebar(
+ui <- fluidPage(
   
   # Application title
   headerPanel("Binomial Simulation and Spinner"),
@@ -19,7 +15,7 @@ shinyUI(pageWithSidebar(
   sidebarPanel(
     
     # Specify the probaility of success
-    sliderInput("pi", "Probability of Success:", 
+    sliderInput("psuccess", "Probability of Success:", 
                 min = 0, max = 1, value = 0, step = .01),
     #Specify the sample size
     sliderInput("n", "Sample Size:",
@@ -34,7 +30,7 @@ shinyUI(pageWithSidebar(
                   label = strong("Test a specific value"),
                   value = FALSE),
     
-    shiny::conditionalPanel(
+    conditionalPanel(
       condition = "input.check == true",
       
       numericInput("obs", "Observed Count:", min = 0, value = 1.0),
@@ -45,7 +41,6 @@ shinyUI(pageWithSidebar(
                        "Right-tailed" = "right", 
                        "Two-tailed" = "two"))    
     )
-    
   ),
   
   # where the plots get displayed
@@ -70,15 +65,13 @@ shinyUI(pageWithSidebar(
       )
     )
   )
-))
+)
 
-# server.R for Spinner
-library(shiny)
+
 library(BHH2)
 
 # Define server logic required to generate and plot a random distribution
-shinyServer(function(input, output) {
-  
+server <- function(input, output) {
   
   # This is here to generate the random data.  To be able to use the data in multiple 
   # plots it must be in a function outside the renderPlot() functions and will need 
@@ -86,38 +79,28 @@ shinyServer(function(input, output) {
   # the reactive() around the function makes it so that the lines for the spinner
   # will not change until you refresh the page
   myData <- reactive(function() {
-    
     # Generate a uniform distribution from 0 to 2pi (think polar coordinates)
     runif(n=100, min=0, max=1)
     
   })
   
   binData <- reactive(function() {
-    
-    
     # Generate a binomal distribution 
-    rbinom(1000, input$n, input$pi)
-    
+    rbinom(1000, input$n, input$psuccess)
   })
-  
   
   # Generates piPlot and allows it to be reactive
   output$circlePlot <- renderPlot({
     
-    # initializing variables
-    n = input$n
-    pi = input$pi
-    
     # changing the value of pi into an x and y coordinate using polar coordinate knowledge.
     # x = rcos(theta) and y = rsin(theta) where theta is between 0 and 2pi
-    xcart = cos(pi*2*3.1415926536)
-    ycart = sin(pi*2*3.1415926536)
+    xcart = cos(input$psuccess*2*pi)
+    ycart = sin(input$psuccess*2*pi)
     
     # getting the data and setting the data up to be used
     data = myData()
-    data = data.frame(data*(2*3.1415926536))
-    data = data[1:n,]
-    
+    data = data.frame(data*(2*pi))
+    data = data[1:input$n,]
     
     # Setting up the plot area for the circle
     plot(0,0,
@@ -125,18 +108,16 @@ shinyServer(function(input, output) {
          xlab = "", ylab = "", frame.plot = FALSE, axes=FALSE)
     
     # coloring in the circle 
-    if(pi <= .25){
+    if(input$psuccess <= .25){
       # the x coordinates for the curve
       x = c(0, xcart, seq(xcart, 1, (1-xcart)/50), 1)
       # the y coordinates for the curve
       y = c(0, ycart, sqrt(1-(seq(xcart, 1, (1-xcart)/50)^2)), 0) 
       # drawing the polygon
       polygon(x, y, col='skyblue', border = NA)
-      
     }
     
-    else if(pi <=.5){
-      
+    else if(input$psuccess <=.5){
       # the curve for the first section but for a full 25%
       # replaced xcart with 0 and ycart with 1 because 25% of the circle (rotating like polar coordinates) is at point (0,1)
       x = c(0,0,seq(0,1,(1-0)/50),1)
@@ -147,10 +128,9 @@ shinyServer(function(input, output) {
       x = c(xcart, seq(xcart, 0, (1-xcart)/50), -.00000000001, 0)
       y = c(ycart, sqrt(1-(seq(xcart, 0, (1-xcart)/50)^2)), .999999999, 0) 
       polygon(x, y, col='skyblue', border = NA)
-      
     }
     
-    else if(pi <= .75){
+    else if(input$psuccess <= .75){
       
       # the curve for the first section but for a full 25%
       # replaced xcart with 0 and ycart with 1 because 25% of the circle (rotating like polar coordinates) is at point (0,1)
@@ -170,7 +150,7 @@ shinyServer(function(input, output) {
       y = c(0, -sqrt(1-(seq(-1, xcart, abs(1-xcart)/50)^2)), ycart, 0) 
       polygon(x, y, col='skyblue', border = NA)
     }
-    else if(pi < 1){
+    else if(input$psuccess < 1){
       
       # the curve for the first section but for a full 25%
       # replaced xcart with 0 and ycart with 1 because 25% of the circle (rotating like polar coordinates) is at point (0,1)
@@ -196,7 +176,6 @@ shinyServer(function(input, output) {
       # using negative sqrt because we are drawing the bottom half of a circle
       y = c(0, -sqrt(1-(seq(-1, xcart, abs(1-xcart)/50)^2)), ycart, 0) 
       polygon(x, y, col='skyblue', border = NA)
-      
     }
     else {
       
@@ -226,15 +205,13 @@ shinyServer(function(input, output) {
       polygon(x, y, col='skyblue', border = NA)
     }
     
-    
     # drawing a circle using curve()
     curve(sqrt(1-x^2), from = -1, to = 1, n = 200, add = TRUE, xlab = "")
     curve(-sqrt(1-x^2), from = -1, to = 1, n = 200, add = TRUE, xlab = "")
     
     # drawing the random lines with theta between 0 and 2pi x = rcos(data) and y = rsin(data) *data is theta*
     segments(0, 0, cos(data), sin(data))
-    
-  })
+    })
   
   # Generates onesimTable and allows it to be reactive
   output$onesimTable <- renderTable({
@@ -245,8 +222,8 @@ shinyServer(function(input, output) {
     unifdata = unifdata[1:input$n,]
     
     # determining if each part is a success or failure
-    success = data.frame(c(sum(unifdata <= input$pi)))
-    failure = data.frame(c(input$n - sum(unifdata <= input$pi)))
+    success = data.frame(c(sum(unifdata <= input$psuccess)))
+    failure = data.frame(c(input$n - sum(unifdata <= input$psuccess)))
     
     # binding the successes and failures together to display them in simulationtable
     simulationtable = cbind(format(success, nsmall = 0),format(failure, nsmall = 0))
@@ -269,9 +246,7 @@ shinyServer(function(input, output) {
     names(simulationtable)[1] <- "Success"
     names(simulationtable)[2] <- "Failure"
     simulationtable
-    
   })
-  
   
   # Generates distPlot and allows it to be reactive
   output$histPlot <- renderPlot({
@@ -282,7 +257,7 @@ shinyServer(function(input, output) {
     unifdata = unifdata[1:input$n,]
     
     # counting the number of successes in the spinner
-    data = data.frame(c(sum(unifdata <= input$pi)))
+    data = data.frame(c(sum(unifdata <= input$psuccess)))
     names(data)[1] <- "Success"
     
     # this if statement only grabs the extra binomial simulation data if sim is greater than 1
@@ -298,17 +273,14 @@ shinyServer(function(input, output) {
       data = rbind(data, remainingsuccesses)  
     }
     
-    
     # Initializing variables because if statements in shiny do not like input variables
     # If you declare the drop-down inputs as a variable, it avoids a lot of potential errors
     # This does that
     check = input$check  
     test = input$test 
     
-    
     # Dot plot of the binomial simulations
     dotPlot(data, xlim=c(0,input$n), xlab="Number of Successes")
-    
     
     # For testing and creating a p-value
     if(check==TRUE & test!="blank"){
@@ -328,7 +300,6 @@ shinyServer(function(input, output) {
         else{
           rect(input$obs, 0, input$n, 1, col="#0000ff22", pch=16, cex=3)
         }
-        
       }
       
       # For left-tailed tests
@@ -352,7 +323,7 @@ shinyServer(function(input, output) {
       if(test == "two"){
         
         # Calculating the expected value and the distance from the observed to the expected value
-        expectedvalue = input$n * input$pi
+        expectedvalue = input$n * input$psuccess
         distance = abs(expectedvalue - input$obs)
         
         # Calculating the p-value for when the expected value is the same as the observed value
@@ -397,10 +368,8 @@ shinyServer(function(input, output) {
       # Displaying the p-value
       text(3, .75, 
            paste("p-value = ", countdots,"/", input$sims," = ", round(pvalue, 4)), col = "red" )
-      
     }
-    
   })
-  
-})
+}
 
+shinyApp(ui = ui, server = server)
