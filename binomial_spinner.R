@@ -7,11 +7,11 @@ library(shiny)
 
 # Define UI for application that plots random distributions
 ui <- fluidPage(
-  headerPanel("Binomial Simulation and Spinner"),
+  headerPanel("Binomial Simulation using a Spinner"),
   sidebarPanel(
     sliderInput("psuccess", "Probability of Success:", min = 0, max = 1, value = 0, step = .01),
     sliderInput("n", "Sample Size:", min = 1, max = 30, value = 1, step=1.0),
-    sliderInput("sims", "Number of Repeated Samples:", min = 1, max = 100, value = 1, step= 1.0),
+    sliderInput("sims", "Total Number of Samples:", min = 1, max = 100, value = 1, step= 1.0),
     
     checkboxInput("check", label = strong("Test a specific value"), value = FALSE),
       conditionalPanel(
@@ -55,7 +55,7 @@ server <- function(input, output) {
   # the reactive() around the function makes it so that the lines for the spinner
   # will not change until you refresh the page
   data = isolate({runif(n=100, min=0, max=1)*(2*pi)})
-  bindata <- isolate({rbinom(1000, input$n, input$psuccess)})
+  bindata <- reactive({rbinom(1000, input$n, input$psuccess)})
   
   output$circlePlot <- renderPlot({
     # setting up a plot
@@ -91,7 +91,8 @@ server <- function(input, output) {
   # Generates remainingTable and allows it to be reactive
   output$remainingTable <- renderTable({
     # displaying the successes and failures and displaying them in situationtable
-    simsuccess = bindata[1:(input$sims),]
+    bindata = bindata()
+    simsuccess = bindata[1:(input$sims)]
     simfailure = input$n - simsuccess
     simulationtable = cbind(simsuccess, simfailure)
     colnames(simulationtable) <- c("Success", "Failure")
@@ -101,26 +102,16 @@ server <- function(input, output) {
   # Generates distPlot and allows it to be reactive
   output$histPlot <- renderPlot({
     # getting the data displayed in the spinner
-    unifdata = data.frame(data)
-    unifdata = unifdata[1:input$n,]
+    success = sum(data[1:input$n] <= input$psuccess*2*pi)
+  
+    # getting the remaining data for the simulation
+    remainingsuccesses = data.frame(bindata())
+    remainingsuccesses = data.frame(remainingsuccesses[0:(input$sims - 1),])
+    names(remainingsuccesses)[1] <- "Success"
     
-    # counting the number of successes in the spinner
-    data = data.frame(c(sum(unifdata <= input$psuccess)))
-    names(data)[1] <- "Success"
-    
-    # this if statement only grabs the extra binomial simulation data if sim is greater than 1
-    if (input$sims > 1){
-      
-      # getting the remaining data for the simulation
-      remainingsuccesses = bindata
-      remainingsuccesses = data.frame(c(remainingsuccesses))
-      remainingsuccesses = data.frame(c(remainingsuccesses[0:(input$sims - 1),]))
-      names(remainingsuccesses)[1] <- "Success"
-      
-      # binding together the successes for the data
-      data = rbind(data, remainingsuccesses)  
-    }
-    
+    # binding together the successes for the data
+    data = rbind(success, remainingsuccesses)  
+
     # Initializing variables because if statements in shiny do not like input variables
     # If you declare the drop-down inputs as a variable, it avoids a lot of potential errors
     # This does that
