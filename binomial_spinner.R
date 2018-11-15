@@ -74,6 +74,7 @@ server <- function(input, output) {
     curve(sqrt(1-x^2), from = -1, to = 1, n = 200, add = TRUE, xlab = "", lwd = 2)
     curve(-sqrt(1-x^2), from = -1, to = 1, n = 200, add = TRUE, xlab = "", lwd = 2)  
     segments(0, 0, cos(data[1:input$n]), sin(data[1:input$n]))
+    legend("topleft", legend = "Success", col ="skyblue", pch = 19, pt.cex = 2, bty = "n")
   })
   
   # Generates onesimTable and allows it to be reactive
